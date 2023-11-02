@@ -4,8 +4,30 @@ use crossterm::{cursor, event, execute, queue, terminal};
 use std::io;
 use std::io::{stdout, Write};
 use std::time::Duration;
+use std::cmp;
+
 
 const VERSION: &str = "0.0.1";
+
+struct EditorRows {
+    row_contents: Vec<Box<str>>,
+}
+
+
+impl EditorRows {
+    fn new() -> Self {
+        Self { row_contents: vec!["Hello World".into()] ,}
+    }
+
+    fn number_of_rows(&self) -> usize{
+        1
+    }
+
+    fn get_row(&self) -> &str {
+        &self.row_contents[0]
+    }
+}
+
 
 struct CleanUp;
 
@@ -128,21 +150,29 @@ impl Output {
         let screen_rows = self.win_size.1;
         let screen_columns = self.win_size.0;
         for i in 0..screen_rows {
-            if i == screen_rows / 3 {
-                let mut welcome = format!("Pound Editor --- Version {}", VERSION);
-                if welcome.len() > screen_columns {
-                    welcome.truncate(screen_columns)
-                }
-                let mut padding = (screen_columns - welcome.len()) / 2;
-                if padding != 0 {
+            if i >= self.editor_rows.number_of_rows() { /* add this line */
+                if i == screen_rows / 3 {
+                    let mut welcome = format!("Pound Editor --- Version {}", VERSION);
+                    if welcome.len() > screen_columns {
+                        welcome.truncate(screen_columns)
+                    }
+                    let mut padding = (screen_columns - welcome.len()) / 2;
+                    if padding != 0 {
+                        self.editor_contents.push('~');
+                        padding -= 1
+                    }
+                    (0..padding).for_each(|_| self.editor_contents.push(' '));
+                    self.editor_contents.push_str(&welcome);
+                } else {
                     self.editor_contents.push('~');
-                    padding -= 1
                 }
-                (0..padding).for_each(|_| self.editor_contents.push(' '));
-                self.editor_contents.push_str(&welcome);
+                /* add the following*/
             } else {
-                self.editor_contents.push('~');
+                let len = cmp::min(self.editor_rows.get_row().len(), screen_columns);
+                self.editor_contents
+                    .push_str(&self.editor_rows.get_row()[..len])
             }
+            /* end */
             queue!(
                 self.editor_contents,
                 terminal::Clear(ClearType::UntilNewLine)
